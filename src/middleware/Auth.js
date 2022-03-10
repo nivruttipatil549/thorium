@@ -1,23 +1,30 @@
 
-const jwt = require("jsonwebtoken")
-let tokenauth = function (req, res, next) {
+const jwt = require('jsonwebtoken')
+const userModel = require('../models/userModel')
 
-   try {
+const authenticate = async function(req, res, next) {
+    let token = req.headers["x-auth-token"]
+    if(!token) return res.send({status: false, msg: "token must be provided"})
+    
+    let verifiedToken = jwt.verify(token , "functionup-thorium")   
+    if(!verifiedToken) return res.send({status: false, msg: "Invalid token"})
 
-    let token = req.headers["x-auth-token"];
-    if (!token) {
-        return res.send({ status: false, msg: "token must be present" });
-    }
-
-    let decodedToken = jwt.verify(token, "functionup-thorium");
-
-    if (!decodedToken){
-        return res.send({ status: false, msg: "token is invalid" });
-    }
+     req.isVerifiedTokenId = verifiedToken.userId
+    
     next()
-       
-   } catch (error){ res.send(error) }   
-       
 }
 
-module.exports.auth = tokenauth
+
+const authorize = async function(req, res, next) {
+    let id = req.params.userId
+    let tokenId = req.isVerifiedTokenId
+    
+    let userById = await userModel.findById(id)
+    if (!userById) return res.send({status: false, msg: "user does not exist"})
+  
+    if(tokenId != id) return res.send({status: false, msg: "Unauthorized access"})
+    next()
+}
+
+module.exports.authenticate = authenticate
+ module.exports.authorize = authorize
